@@ -1,11 +1,10 @@
 package main
 
 import (
-	//"errors"
+	"errors"
 	"fmt"
-	"net/http"
-
 	"github.com/gin-gonic/gin"
+	"net/http"
 )
 
 type car struct {
@@ -38,11 +37,89 @@ func addNewCar(c *gin.Context) {
 
 }
 
+func carById(c *gin.Context) {
+	id := c.Param("id")
+	car, err := getCarById(id)
+
+	if err != nil {
+		// handling response in case of error
+		c.IndentedJSON(http.StatusNotFound, gin.H{"message": "car not found"})
+		return
+	}
+
+	c.IndentedJSON(http.StatusOK, car)
+
+}
+
+func getCarById(id string) (*car, error) {
+
+	for i, c := range cars {
+
+		if c.ID == id {
+			return &cars[i], nil
+		}
+	}
+
+	return nil, errors.New("Car not found")
+}
+
+func buyCar(c *gin.Context) {
+	id, ok := c.GetQuery("id")
+
+	if ok == false {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Missing id - query parameter"})
+		return
+	}
+
+	car, err := getCarById(id)
+
+	if err != nil {
+		// handling response in case of error
+		c.IndentedJSON(http.StatusNotFound, gin.H{"message": "car not found"})
+		return
+	}
+
+	if car.Quantity <= 0 {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Car not available"})
+		return
+	}
+
+	car.Quantity -= 1
+
+	c.IndentedJSON(http.StatusOK, car)
+
+}
+
+func sellCar(c *gin.Context) {
+	id, ok := c.GetQuery("id")
+
+	if !ok {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Missing id - query parameter"})
+		return
+	}
+
+	car, err := getCarById(id)
+
+	if err != nil {
+		// handling response in case of error
+		c.IndentedJSON(http.StatusNotFound, gin.H{"message": "car not found"})
+		return
+	}
+
+	car.Quantity += 1
+
+	c.IndentedJSON(http.StatusOK, car)
+
+}
+
 func main() {
 	fmt.Println("Main Function of Car API")
 
 	router := gin.Default() // creating router object
 	router.GET("/cars", getCars)
+	router.GET("cars/:id", carById) // added path parameter id
 	router.POST("/cars", addNewCar)
+	router.PUT("/buycar", buyCar)   // Using Query parameter in request
+	router.PUT("/sellcar", sellCar) //Using Query parameter in request
 	router.Run("localhost:8080")
 }
